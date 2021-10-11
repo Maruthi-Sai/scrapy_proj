@@ -1,4 +1,13 @@
 import scrapy
+import datetime
+
+
+def string_cleaner(rouge_text):
+    return (''.join(rouge_text.strip()).encode('utf-8', 'ignore').decode('ascii'))
+
+
+def format_date(date):
+    return datetime.datetime.strptime(date, '%B %d, %Y').strftime('%Y-%m-%d')
 
 
 class PressReleasesNY(scrapy.Spider):
@@ -9,18 +18,22 @@ class PressReleasesNY(scrapy.Spider):
     ]
 
     def parse(self, response):
-        for post in response.css('tr.data-row'):
-            url = 'https://www.dfs.ny.gov' + post.css("td a::attr(href)").get()
-            yield {
-                "date"      : post.css("td::text").get().strip(),
-                "title"     : post.css("td a::text").get(),
-                "url"       : url,
-                "content"   : response.follow(url.get(), callback=self.parse_post)
-            }
+        for url in response.css('tr.data-row td a::attr(href)'):
+            yield response.follow(url.get(), callback=self.parse_post)
+            
         next_page = response.css('li.pager__item--next a::attr(href)').get()
         if next_page is not None:
             next_page = response.urljoin(next_page)
             yield scrapy.Request(next_page, callback=self.parse)
-    
+
     def parse_post(self, response):
-        yield response.css('h1::text').get()
+        title = string_cleaner(response.css('h1::text').get())
+        content = ''
+        for data in response.css('h3 em::text').getall():
+            content += string_cleaner(data)
+        yield {
+            'date'      : format_date(response.css('p::text')[1].get().strip()),
+            'title'     : title,
+            'url'       : response.request.url,
+            'content'   : f'{title} {content}'
+        }
