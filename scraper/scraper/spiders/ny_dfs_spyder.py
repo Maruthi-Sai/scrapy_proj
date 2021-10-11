@@ -3,7 +3,7 @@ import datetime
 
 
 def string_cleaner(rouge_text):
-    return (''.join(rouge_text.strip()).encode('utf-8', 'ignore').decode('ascii'))
+    return (''.join(rouge_text.strip()).encode('utf-8', 'ignore').decode('ascii', 'ignore'))
 
 
 def format_date(date):
